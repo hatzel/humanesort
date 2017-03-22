@@ -1,3 +1,4 @@
+//! A crate for sorting the way humans would.
 extern crate unicode_segmentation;
 use std::iter::Peekable;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
@@ -19,12 +20,12 @@ mod tests {
         assert_eq!(it.next().unwrap().0, "11");
         assert_eq!(it.next().unwrap().0, "LOL");
     }
-    
+
     #[test]
     fn sort() {
-        use ::HumanString;
+        use ::HumaneString;
         let strings = vec!["11", "2", "a", "1"];
-        let mut humans: Vec<HumanString> = strings.iter().map(|s| ::HumanString::new(s)).collect();
+        let mut humans: Vec<HumaneString> = strings.iter().map(|s| ::HumaneString::new(s)).collect();
         humans.sort();
         let sorted_strings: Vec<String> = humans.into_iter().map(|hs| hs.data).collect();
         assert_eq!(vec!["1", "2", "11", "a"], sorted_strings);
@@ -32,15 +33,21 @@ mod tests {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-struct HumanString {
+pub struct HumaneString {
     data: String
 }
 
-impl HumanString {
-    fn new(s: &str) -> Self {
-        HumanString {
+impl HumaneString {
+    pub fn new(s: &str) -> Self {
+        HumaneString {
             data: s.to_owned()
         }
+    }
+}
+
+impl AsRef<str> for HumaneString {
+    fn as_ref(&self) -> &str {
+        &self.data
     }
 }
 
@@ -52,30 +59,44 @@ fn sorting_type(x: &str) -> SortingType {
     }
 }
 
-impl Ord for HumanString {
+impl Ord for HumaneString {
     fn cmp(&self, other: &Self) -> Ordering {
-        let mut self_tokens = TokenIterator::new(&self.data, Box::new(sorting_type));
-        let mut other_tokens = TokenIterator::new(&other.data, Box::new(sorting_type));
-        loop {
-            match (self_tokens.next(), other_tokens.next()) {
-                (None, None) => return Ordering::Equal,
-                (None, _) => return Ordering::Less,
-                (_, None) => return Ordering::Greater,
-                (Some(ours), Some(theirs)) => {
-                    match (ours.1, theirs.1) {
-                        (SortingType::Numeric, SortingType::NonNumeric) => return Ordering::Less,
-                        (SortingType::NonNumeric, SortingType::Numeric) => return Ordering::Greater,
-                        (SortingType::Numeric, SortingType::Numeric) => {
-                            let cmp = ours.0.parse::<usize>().unwrap().cmp(&theirs.0.parse::<usize>().unwrap());
-                            if cmp != Ordering::Equal {
-                                return cmp
-                            }
+        humane_order(self, other)
+    }
+}
+
+/// Use this as a function for sorting Strings in a human readable fashion.
+///
+/// # Examples
+///
+/// ```
+/// use humanesort::humane_order;
+///
+/// let mut strings = vec!["2-lul", "1-lul"];
+/// strings.sort_by(|a, b| humane_order(a, b));
+/// ```
+pub fn humane_order<T>(this: T, other: T) -> Ordering where T: AsRef<str> {
+    let mut self_tokens = TokenIterator::new(this.as_ref(), Box::new(sorting_type));
+    let mut other_tokens = TokenIterator::new(other.as_ref(), Box::new(sorting_type));
+    loop {
+        match (self_tokens.next(), other_tokens.next()) {
+            (None, None) => return Ordering::Equal,
+            (None, _) => return Ordering::Less,
+            (_, None) => return Ordering::Greater,
+            (Some(ours), Some(theirs)) => {
+                match (ours.1, theirs.1) {
+                    (SortingType::Numeric, SortingType::NonNumeric) => return Ordering::Less,
+                    (SortingType::NonNumeric, SortingType::Numeric) => return Ordering::Greater,
+                    (SortingType::Numeric, SortingType::Numeric) => {
+                        let cmp = ours.0.parse::<usize>().unwrap().cmp(&theirs.0.parse::<usize>().unwrap());
+                        if cmp != Ordering::Equal {
+                            return cmp
                         }
-                        (SortingType::NonNumeric, SortingType::NonNumeric) => {
-                            let cmp = ours.0.cmp(theirs.0);
-                            if cmp != Ordering::Equal {
-                                return cmp
-                            }
+                    }
+                    (SortingType::NonNumeric, SortingType::NonNumeric) => {
+                        let cmp = ours.0.cmp(theirs.0);
+                        if cmp != Ordering::Equal {
+                            return cmp
                         }
                     }
                 }
@@ -84,7 +105,7 @@ impl Ord for HumanString {
     }
 }
 
-impl PartialOrd for HumanString {
+impl PartialOrd for HumaneString {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -96,9 +117,7 @@ enum SortingType {
     NonNumeric
 }
 
-struct TokenIterator<'a, T> where T: Eq {
-    token_type: Box<Fn(&str) -> T>,
-    string: &'a str,
+struct TokenIterator<'a, T> where T: Eq { token_type: Box<Fn(&str) -> T>, string: &'a str,
     grapheme_iterator: Peekable<GraphemeIndices<'a>>
 }
 
@@ -114,7 +133,6 @@ impl<'a, T> TokenIterator<'a, T> where T: Eq {
 
 impl<'a, T> Iterator for TokenIterator<'a, T> where T: Eq + Clone {
     type Item = (&'a str, T);
-
 
     fn next(&mut self) -> Option<(&'a str, T)> {
         let (first_index, mut grapheme) = match self.grapheme_iterator.next() {
