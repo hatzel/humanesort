@@ -1,0 +1,7 @@
+[package]
+name = "humansort"
+version = "0.1.0"
+authors = ["Hans Ole Hatzel <hhatzel@gmail.com>"]
+
+[dependencies]
+unicode-segmentation = "1.1"
