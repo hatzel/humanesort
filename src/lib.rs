@@ -11,10 +11,10 @@ mod tests {
         use ::SortingType;
         let s = "11LOL";
         let mut it = ::TokenIterator::new(s, Box::new(|x: &str| -> SortingType {
-            let num: Result<u64, _> = x.parse();
-            match num {
-                Ok(_) => SortingType::Numeric,
-                _ => SortingType::NonNumeric
+            if x.chars().all(|c| char::is_numeric(c)) {
+                return SortingType::Numeric
+            } else {
+                return SortingType::NonNumeric
             }
         }));
         assert_eq!(it.next().unwrap().0, "11");
