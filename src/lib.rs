@@ -7,18 +7,46 @@
 //! Often this is not the desired behavior, this crate implements a more human compatible ordering
 //! by treating each occurrence of consecutive digits as a combined number in sorting.
 //!
-//! The crate implements the type `HumaneOrder` for common types and `HumaneSortable` for slices of
+//! The crate implements the type `HumaneOrder` for common types (currently only most string types) and `HumaneSortable` for slices of
 //! `HumanOrder` types.
 //!
+//! The API is very simple to use:
+//!
 //! ```
-//! use humanesort::{HumaneOrder, HumaneSortable};
+//! use humanesort::HumaneSortable;
 //! let mut sort_me = vec!["something-11", "something-1", "something-2"];
 //! sort_me.humane_sort();
 //! assert_eq!(vec!["something-1", "something-2", "something-11"], sort_me);
 //! ```
 //!
-//! The rules for sorting are as follows:
-//! 
+//! ## Details on String Sorting
+//!
+//! For sorting, a string is split into numeric and non-numeric sections.
+//! The comparison starts at the first group and if no group is (by any of the rules) larger than the other
+//! the comparison moves on to the next section. For comparison of sections the following rules are
+//! used.
+//!
+//! * Any non-numbers are compared using their usual compare methods
+//! * Numbers are always greater than nun-numbers
+//! * Numeric sequences are ordered by their numeric value
+//! * Empty sequences are always smaller than non-empty ones
+//!
+//!
+//! These examples should give you some idea of how this works out in practice:
+//!
+//! ```
+//! use humanesort::HumaneSortable;
+//! let mut a = ["lol-1", "lal-2"];
+//! a.humane_sort();
+//! assert_eq!(a, ["lal-2", "lol-1"])
+//! ```
+//!
+//! ```
+//! use humanesort::HumaneSortable;
+//! let mut a = ["13-zzzz", "1-ffff", "12-aaaa"];
+//! a.humane_sort();
+//! assert_eq!(a, ["1-ffff", "12-aaaa", "13-zzzz"])
+//! ```
 extern crate unicode_segmentation;
 use std::iter::Peekable;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
@@ -48,6 +76,9 @@ mod tests {
         let mut strings = vec!["11", "2", "a", "1"];
         strings.humane_sort();
         assert_eq!(vec!["1", "2", "11", "a"], strings);
+        let mut sort_me = vec!["something-11", "something-1", "something-2"];
+        sort_me.humane_sort();
+        assert_eq!(vec!["something-1", "something-2", "something-11"], sort_me);
     }
 }
 
@@ -59,7 +90,7 @@ fn sorting_type(x: &str) -> SortingType {
     }
 }
 
-/// A type that can be sorted in a more human compatible fashion should implement this.
+/// Trait for collections of `HumaneOrder` types.
 pub trait HumaneSortable {
     fn humane_sort(&mut self);
 }
@@ -70,6 +101,7 @@ impl<T> HumaneSortable for [T] where T: HumaneOrder {
     }
 }
 
+/// Trait for types that can be ordered in a human friendly way.
 pub trait HumaneOrder {
     fn humane_cmp(&self, other: &Self) -> Ordering;
 }
@@ -137,21 +169,19 @@ impl<'a, T> Iterator for TokenIterator<'a, T> where T: Eq + Copy {
             Some((i, s)) => (i, s),
             None => return None // This is only reached when the first element is None
         };
-        let mut index = first_index;
         loop {
             let current_type = (self.token_type)(grapheme);
-            let next_grapheme = match self.grapheme_iterator.peek() {
-                Some(&(_, t)) => t,
-                None => {return Some((&self.string[first_index..index+1], (self.token_type)(grapheme)))}
+            let (next_index, next_grapheme) = match self.grapheme_iterator.peek() {
+                Some(&(i, g)) => (i, g),
+                None => return Some((&self.string[first_index..self.string.len()], (self.token_type)(grapheme)))
             };
             if current_type != (self.token_type)(next_grapheme) {
-                return Some((&self.string[first_index..index+1], current_type))
+                return Some((&self.string[first_index..next_index], current_type))
             }
             let tup = match self.grapheme_iterator.next() {
                 Some((i, s)) => (i, s),
                 None => return None // This is only reached when the first element is None
             };
-            index = tup.0;
             grapheme = tup.1;
         }
     }
