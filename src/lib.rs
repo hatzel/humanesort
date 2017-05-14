@@ -13,7 +13,7 @@
 //! The API is very simple to use:
 //!
 //! ```
-//! use humanesort::HumaneSortable;
+//! use humanesort::prelude::*;
 //! let mut sort_me = vec!["something-11", "something-1", "something-2"];
 //! sort_me.humane_sort();
 //! assert_eq!(vec!["something-1", "something-2", "something-11"], sort_me);
@@ -48,6 +48,7 @@
 //! assert_eq!(a, ["1-ffff", "12-aaaa", "13-zzzz"])
 //! ```
 extern crate unicode_segmentation;
+pub mod prelude;
 use std::iter::Peekable;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
 use std::cmp::Ordering;
