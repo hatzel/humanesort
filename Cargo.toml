@@ -8,7 +8,7 @@ documentation = "https://docs.rs/humanesort"
 homepage = "https://github.com/hatzel/humanesort"
 repository = "https://github.com/hatzel/humanesort"
 readme = "README.md"
-keywords = ["sort", "human", "readable", "natural", "naturalsort"]
+keywords = ["sort", "human", "lexical", "natural", "naturalsort"]
 license = "MIT"
 
 [dependencies]
