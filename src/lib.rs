@@ -20,13 +20,14 @@ mod tests {
     fn sorting_test() {
         use ::SortingType;
         let s = "11LOL";
-        let mut it = ::TokenIterator::new(s, Box::new(|x: &str| -> SortingType {
+        let fun = &|x: &str| -> SortingType {
             if x.chars().all(|c| char::is_numeric(c)) {
                 return SortingType::Numeric
             } else {
                 return SortingType::NonNumeric
             }
-        }));
+        };
+        let mut it = ::TokenIterator::new(s, fun);
         assert_eq!(it.next().unwrap().0, "11");
         assert_eq!(it.next().unwrap().0, "LOL");
     }
@@ -65,8 +66,9 @@ pub trait HumaneOrder {
 
 impl<T> HumaneOrder for T where T: AsRef<str> {
     fn humane_cmp(&self, other: &Self) -> Ordering {
-        let mut self_tokens = TokenIterator::new(self.as_ref(), Box::new(sorting_type));
-        let mut other_tokens = TokenIterator::new(other.as_ref(), Box::new(sorting_type));
+        let sorting_type_function = &sorting_type;
+        let mut self_tokens = TokenIterator::new(self.as_ref(), sorting_type_function);
+        let mut other_tokens = TokenIterator::new(other.as_ref(), sorting_type_function);
         loop {
             match (self_tokens.next(), other_tokens.next()) {
                 (None, None) => return Ordering::Equal,
@@ -95,18 +97,20 @@ impl<T> HumaneOrder for T where T: AsRef<str> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum SortingType {
     Numeric,
     NonNumeric
 }
 
-struct TokenIterator<'a, T> where T: Eq { token_type: Box<Fn(&str) -> T>, string: &'a str,
+struct TokenIterator<'a, T> where T: Eq + Copy + 'a {
+    token_type: &'a Fn(&str) -> T,
+    string: &'a str,
     grapheme_iterator: Peekable<GraphemeIndices<'a>>
 }
 
-impl<'a, T> TokenIterator<'a, T> where T: Eq {
-    fn new(s: &'a str, func: Box<Fn(&str) -> T>) -> Self {
+impl<'a, T> TokenIterator<'a, T> where T: Eq + Copy {
+    fn new(s: &'a str, func: &'a Fn(&str) -> T) -> Self {
         TokenIterator {
             token_type: func,
             string: s,
@@ -115,7 +119,7 @@ impl<'a, T> TokenIterator<'a, T> where T: Eq {
     }
 }
 
-impl<'a, T> Iterator for TokenIterator<'a, T> where T: Eq {
+impl<'a, T> Iterator for TokenIterator<'a, T> where T: Eq + Copy {
     type Item = (&'a str, T);
 
     fn next(&mut self) -> Option<(&'a str, T)> {
