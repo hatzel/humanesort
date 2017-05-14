@@ -13,7 +13,7 @@ The crate implements the type `HumaneOrder` for common types (currently only mos
 
 The API is very simple to use:
 
-```
+```rust
 use humanesort::prelude::*;
 let mut sort_me = vec!["something-11", "something-1", "something-2"];
 sort_me.humane_sort();
@@ -35,14 +35,14 @@ used.
 
 These examples should give you some idea of how this works out in practice:
 
-```
+```rust
 use humanesort::HumaneSortable;
 let mut a = ["lol-1", "lal-2"];
 a.humane_sort();
 assert_eq!(a, ["lal-2", "lol-1"])
 ```
 
-```
+```rust
 use humanesort::HumaneSortable;
 let mut a = ["13-zzzz", "1-ffff", "12-aaaa"];
 a.humane_sort();
