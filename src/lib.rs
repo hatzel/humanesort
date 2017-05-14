@@ -1,4 +1,14 @@
 //! A crate for sorting the way humans would.
+//! 
+//! This crate aims to provide the sorting behavior a human might expect.
+//! Say you have a directory of files all called "Something-" with a sequential number appended.
+//! With traditional sorting by character the file "Something-11" would occur after the file
+//! "Something-2".
+//! Often this is not the desired behavior, this crate implements a more human compatible ordering
+//! by treating each occurrence of consecutive digits as a combined number in sorting.
+//! 
+//! The crate implements the type `HumaneOrder` for common types and `HumaneSortable` for slices of
+//! `HumanOrder` types.
 extern crate unicode_segmentation;
 use std::iter::Peekable;
 use unicode_segmentation::{GraphemeIndices, UnicodeSegmentation};
@@ -7,7 +17,7 @@ use std::cmp::Ordering;
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
+    fn sorting_test() {
         use ::SortingType;
         let s = "11LOL";
         let mut it = ::TokenIterator::new(s, Box::new(|x: &str| -> SortingType {
@@ -22,32 +32,11 @@ mod tests {
     }
 
     #[test]
-    fn sort() {
-        use ::HumaneString;
-        let strings = vec!["11", "2", "a", "1"];
-        let mut humans: Vec<HumaneString> = strings.iter().map(|s| ::HumaneString::new(s)).collect();
-        humans.sort();
-        let sorted_strings: Vec<String> = humans.into_iter().map(|hs| hs.data).collect();
-        assert_eq!(vec!["1", "2", "11", "a"], sorted_strings);
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct HumaneString {
-    data: String
-}
-
-impl HumaneString {
-    pub fn new(s: &str) -> Self {
-        HumaneString {
-            data: s.to_owned()
-        }
-    }
-}
-
-impl AsRef<str> for HumaneString {
-    fn as_ref(&self) -> &str {
-        &self.data
+    fn sort_slice() {
+        use HumaneSortable;
+        let mut strings = vec!["11", "2", "a", "1"];
+        strings.humane_sort();
+        assert_eq!(vec!["1", "2", "11", "a"], strings);
     }
 }
 
@@ -59,44 +48,45 @@ fn sorting_type(x: &str) -> SortingType {
     }
 }
 
-impl Ord for HumaneString {
-    fn cmp(&self, other: &Self) -> Ordering {
-        humane_order(self, other)
+/// A type that can be sorted in a more human compatible fashion should implement this.
+pub trait HumaneSortable {
+    fn humane_sort(&mut self);
+}
+
+impl<T> HumaneSortable for [T] where T: HumaneOrder {
+    fn humane_sort(&mut self) {
+        self.sort_by(|a, b| a.humane_cmp(b))
     }
 }
 
-/// Use this as a function for sorting Strings in a human readable fashion.
-///
-/// # Examples
-///
-/// ```
-/// use humanesort::humane_order;
-///
-/// let mut strings = vec!["2-lul", "1-lul"];
-/// strings.sort_by(|a, b| humane_order(a, b));
-/// ```
-pub fn humane_order<T>(this: T, other: T) -> Ordering where T: AsRef<str> {
-    let mut self_tokens = TokenIterator::new(this.as_ref(), Box::new(sorting_type));
-    let mut other_tokens = TokenIterator::new(other.as_ref(), Box::new(sorting_type));
-    loop {
-        match (self_tokens.next(), other_tokens.next()) {
-            (None, None) => return Ordering::Equal,
-            (None, _) => return Ordering::Less,
-            (_, None) => return Ordering::Greater,
-            (Some(ours), Some(theirs)) => {
-                match (ours.1, theirs.1) {
-                    (SortingType::Numeric, SortingType::NonNumeric) => return Ordering::Less,
-                    (SortingType::NonNumeric, SortingType::Numeric) => return Ordering::Greater,
-                    (SortingType::Numeric, SortingType::Numeric) => {
-                        let cmp = ours.0.parse::<usize>().unwrap().cmp(&theirs.0.parse::<usize>().unwrap());
-                        if cmp != Ordering::Equal {
-                            return cmp
+pub trait HumaneOrder {
+    fn humane_cmp(&self, other: &Self) -> Ordering;
+}
+
+impl<T> HumaneOrder for T where T: AsRef<str> {
+    fn humane_cmp(&self, other: &Self) -> Ordering {
+        let mut self_tokens = TokenIterator::new(self.as_ref(), Box::new(sorting_type));
+        let mut other_tokens = TokenIterator::new(other.as_ref(), Box::new(sorting_type));
+        loop {
+            match (self_tokens.next(), other_tokens.next()) {
+                (None, None) => return Ordering::Equal,
+                (None, _) => return Ordering::Less,
+                (_, None) => return Ordering::Greater,
+                (Some(ours), Some(theirs)) => {
+                    match (ours.1, theirs.1) {
+                        (SortingType::Numeric, SortingType::NonNumeric) => return Ordering::Less,
+                        (SortingType::NonNumeric, SortingType::Numeric) => return Ordering::Greater,
+                        (SortingType::Numeric, SortingType::Numeric) => {
+                            let cmp = ours.0.parse::<usize>().unwrap().cmp(&theirs.0.parse::<usize>().unwrap());
+                            if cmp != Ordering::Equal {
+                                return cmp
+                            }
                         }
-                    }
-                    (SortingType::NonNumeric, SortingType::NonNumeric) => {
-                        let cmp = ours.0.cmp(theirs.0);
-                        if cmp != Ordering::Equal {
-                            return cmp
+                        (SortingType::NonNumeric, SortingType::NonNumeric) => {
+                            let cmp = ours.0.cmp(theirs.0);
+                            if cmp != Ordering::Equal {
+                                return cmp
+                            }
                         }
                     }
                 }
@@ -105,13 +95,7 @@ pub fn humane_order<T>(this: T, other: T) -> Ordering where T: AsRef<str> {
     }
 }
 
-impl PartialOrd for HumaneString {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug)]
 enum SortingType {
     Numeric,
     NonNumeric
@@ -131,7 +115,7 @@ impl<'a, T> TokenIterator<'a, T> where T: Eq {
     }
 }
 
-impl<'a, T> Iterator for TokenIterator<'a, T> where T: Eq + Clone {
+impl<'a, T> Iterator for TokenIterator<'a, T> where T: Eq {
     type Item = (&'a str, T);
 
     fn next(&mut self) -> Option<(&'a str, T)> {
