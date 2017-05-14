@@ -3,5 +3,13 @@ name = "humanesort"
 version = "0.1.0-alpha"
 authors = ["Hans Ole Hatzel <hhatzel@gmail.com>"]
 
+description = "A crate for sorting the way humans would."
+documentation = "https://docs.rs/humanesort"
+homepage = "https://github.com/hatzel/humanesort"
+repository = "https://github.com/hatzel/humanesort"
+readme = "README.md"
+keywords = ["sort", "human", "readable", "natural", "naturalsort"]
+license = "MIT"
+
 [dependencies]
 unicode-segmentation = "1.1"
