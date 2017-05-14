@@ -1,6 +1,6 @@
 [package]
 name = "humanesort"
-version = "0.1.0"
+version = "0.1.0-alpha"
 authors = ["Hans Ole Hatzel <hhatzel@gmail.com>"]
 
 [dependencies]
