@@ -3,7 +3,7 @@ A crate for sorting the way humans would.
 
 This crate aims to provide the sorting behavior a human might expect.
 Say you have a directory of files all called "Something-" with a sequential number appended.
-With traditional sorting by character the file "Something-11" would occur after the file
+With traditional sorting by character the file "Something-11" would occur before the file
 "Something-2".
 Often this is not the desired behavior, this crate implements a more human compatible ordering
 by treating each occurrence of consecutive digits as a combined number in sorting.
