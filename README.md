@@ -28,7 +28,7 @@ the comparison moves on to the next section. For comparison of sections the foll
 used.
 
 * Any non-numbers are compared using their usual compare methods
-* Numbers are always greater than nun-numbers
+* Numbers are always greater than non-numbers
 * Numeric sequences are ordered by their numeric value
 * Empty sequences are always smaller than non-empty ones
 
